@@ -1,0 +1,169 @@
+Docker workshop
+27 Jul 2017
+Tags: docker
+
+Me
+FlowUp whale
+
+* Why containerization?
+- Containers are immutable (Run the same way each time)
+- Ease of application delivery
+- Isolation from the host system and from the other containers
+
+* Docker
+.image ./docker.svg _ 500
+
+* Docker
+Is the most known containerization platform
+
+Platform allows:
+
+- building application images
+- store images in place named Hub to distribute images among the systems later
+- running containers from images and managing them
+
+* Images vs containers
+.image confused.jpg _ 600
+
+* Image
+Image is set of filesystem layers. This set can originate from these steps process:
+- Installation of application
+- Installation of application's dependencies
+- Adding some configuration files
+- Setting our application as application to run when image is run
+
+These steps can be defined in `Dockerfile` from which Docker image can be built
+
+* Containers
+.image container-layers.jpg _ 600
+
+Only difference against image is that container is created when image is run and thin read-write layer is created above image's layer
+
+* Running container
+We can run container from image named `IMAGE` using command:
+
+    docker run [OPTIONS] IMAGE [COMMAND] [ARG...]
+
+Container is isolated from surrounding environment - host system, other containers, ...
+
+- How to access web application running in container?
+- How to access files inside container?
+- How to set environment variables in container?
+
+* Run options
+We can use run options to solve problems from the previous slide:
+
+.image doge.jpg _ 500
+
+* Volumes
+
+Mounting volumes allows us to make data in container persistent or we can make data from host system accessible to container. We can mount:
+
+- folders or files from host to the container
+- docker volumes to the container
+- network volumes to the container
+- ...
+
+* Volumes - example
+This example shows how to mount two folder from the host system to the container.
+
+Running following command runs image `image` and mounts volumes as in the image:
+
+    docker run -v /home/user:/etc/nginx -v /tmp:/somefolder image
+
+
+.image ./volumes.png _ 700
+
+Now if we access folder /somefolder in the container, we'll see content of the folder /tmp in host container
+
+* Accessing network services in the container
+.image pw.jpg
+
+* Port-forwarding example
+You have running http server in the container on the port 80. To access this server from host, you can setup port forwarding when running container:
+
+    docker run -p 8000:80 IMAGE
+
+Now when you open web-browser in your host machine, you can access http://localhost:8000 and you will see site hosted from the container
+
+* Accessing other containers
+For accessing other containers you've to put these containers into one network.
+Creating network:
+
+    docker network create NAME
+
+Adding container A and B to the network:
+
+    docker network connect NAME A_CONTAINER_NAME
+    docker network connect NAME B_CONTAINER_NAME
+
+Now container A is accessible with domain name A_CONTAINER_NAME and container B is accessible with domain name B_CONTAINER_NAME in network
+
+* Seasoning container with environmental variables
+.video giphy.mp4 video/mp4
+
+* Environment variables - example
+Env variables can be set using switch `-e`:
+
+    docker run -e SOME_PASSWORD=password image
+
+Environment variables often serve as tool for configuration of the container
+
+* Other useful options
+
+- `--name` `NAME` - set container name to `NAME`
+- `--rm` - removes container from the system after it exits
+- `--it` - runs container in interactive mode - you can write commands and read output from container
+- `-d` - runs container in detached mode (in background)
+- `-w` `WORKDIR` - changes working directory in container
+- these are the most used options - for more options - check out docker reference guide
+
+* Controlling docker
+Stop container
+
+    docker stop CONTAINER_NAME/HASH
+
+Remove container
+
+    docker rm CONTAINER_NAME/HASH
+
+Restart container
+
+    docker restart CONTAINER_NAME/HASH
+
+Pull image from Docker Hub
+
+    docker pull IMAGE
+
+Remove image from system
+
+    docker rmi IMAGE
+
+For more commands check out docker's help or command reference
+
+* Complex problem
+
+You want to run WordPress blog that consists of [[https://hub.docker.com/_/wordpress/][WordPress]] and [[https://hub.docker.com/_/mysql/][MySQL]] database
+1. Wordpress should be accessible on the http://localhost:8000/
+2. MySQL database will have data stored on the host computer (tip: MySQL image store data in `/var/lib/mysql`)
+3. MySQL database will have changed password
+4. Wordpress and MySQL should be linked
+5. Everything should be working when you access wordpress
+
+* Complex problem - solution
+
+Create network:
+
+    $ docker network create wordpress
+
+Run MySQL database:
+
+    $ docker run -e MYSQL_ROOT_PASSWORD=mojeheslo \
+        -v $(pwd)/wordpress:/var/lib/mysql \
+        --name wordpress_mysql --network wordpress mysql
+
+Run Wordpress:
+
+    $ docker run -e WORDPRESS_DB_HOST=wordpress_mysql \
+        -e WORDPRESS_DB_PASSWORD=mojeheslo -p 8000:80 \
+        --network wordpress wordpress
